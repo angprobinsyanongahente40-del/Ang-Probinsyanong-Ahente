@@ -514,7 +514,13 @@ function setupConsultationSheet_() {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
   }
-  formatConsultationSheet_(sheet, headers);
+  try {
+    formatConsultationSheet_(sheet, headers);
+  } catch (formatError) {
+    // Formatting must never block lead capture, especially when a user-owned
+    // Google Sheets table contains typed columns that reject format changes.
+    console.warn('Consultation sheet formatting skipped: ' + errorMessage_(formatError));
+  }
   return sheet;
 }
 
@@ -619,7 +625,13 @@ function recordConsultationInSheet_(f, delivery) {
   row[headers.indexOf('Test Record')] = f.isTest ? 'Yes' : 'No';
   sheet.appendRow(row);
   const rowNumber = sheet.getLastRow();
-  formatConsultationSheet_(sheet, headers);
+  try {
+    formatConsultationSheet_(sheet, headers);
+  } catch (formatError) {
+    // The row is already saved; a typed-column formatting restriction is not
+    // allowed to turn a successful lead capture into a failed submission.
+    console.warn('Consultation sheet formatting skipped: ' + errorMessage_(formatError));
+  }
   return { saved: true, leadId: leadId, rowNumber: rowNumber, sheetUrl: sheet.getParent().getUrl(), sheetName: sheet.getName() };
 }
 
