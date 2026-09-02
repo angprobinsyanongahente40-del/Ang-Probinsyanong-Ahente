@@ -3013,49 +3013,39 @@ function renderSurveyRecap(){
 }
 
 /* =========================================================
-   CONSULTATION EMAIL AUTOMATION — google.script.run.
-
-   This page must be served by the Google Apps Script Web App. No Apps Script
-   URL is stored in this HTML. google.script.run calls submitConsultation()
-   directly inside the Apps Script project that served this page.
+   CONSULTATION EMAIL AUTOMATION — Vercel frontend → Apps Script Web App.
+   The Apps Script doPost(e) endpoint saves the lead to Google Sheets and
+   sends the owner/client emails through the existing backend workflow.
 ========================================================= */
+const APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwjPhAHLvvQQU7yvKM4N-2omPcIcOzX7H89ueod9Q_Ht4tQFYpvw2YzhlZYSqY6Pn1r/exec';
 function submitConsultation(event){
   event.preventDefault();
   const btn = document.getElementById('consultSubmitBtn');
   const errEl = document.getElementById('consultSubmitError');
   const form = document.getElementById('consultForm');
   errEl.style.display = 'none';
-
   if(!form.reportValidity()) return;
-
-  if(typeof google === 'undefined' || !google.script || !google.script.run){
-    errEl.textContent = 'Please open this page from the deployed Google Apps Script Web App.';
+  if(!APPS_SCRIPT_WEB_APP_URL){
+    errEl.textContent = 'Hindi pa naka-configure ang consultation service.';
     errEl.style.display = 'block';
     return;
   }
-
-  const name = document.getElementById('consultName').value.trim();
-  const email = document.getElementById('consultEmail').value.trim();
-  const message = document.getElementById('consultMessage').value.trim();
-  const website = document.getElementById('consultWebsite')?.value.trim() || '';
   const payload = {
     type: 'consultation',
-    name: name,
-    email: email,
-    message: message || '(walang iniwang mensahe)',
-    website: website,
+    name: document.getElementById('consultName').value.trim(),
+    email: document.getElementById('consultEmail').value.trim(),
+    message: document.getElementById('consultMessage').value.trim() || '(walang iniwang mensahe)',
+    website: document.getElementById('consultWebsite')?.value.trim() || '',
     resourceKey: selectedResourceKey,
-    answers: consultationQuestions.map((item, i) => ({
-      q: item.q,
-      a: surveyAnswers[i] || '—'
-    }))
+    sourceUrl: window.location.href,
+    answers: consultationQuestions.map((item, i) => ({q:item.q, a:surveyAnswers[i] || '—'}))
   };
-
   btn.disabled = true;
   btn.textContent = 'SENDING...';
-
-  google.script.run
-    .withSuccessHandler((result) => {
+  const body = new URLSearchParams({payload: JSON.stringify(payload)});
+  fetch(APPS_SCRIPT_WEB_APP_URL, {method:'POST', body})
+    .then(response => response.json())
+    .then(result => {
       if(result && (result.success === true || result.sheetSaved === true)){
         document.getElementById('consultFormView').style.display = 'none';
         showConsultationResult(result);
@@ -3064,17 +3054,16 @@ function submitConsultation(event){
         errEl.textContent = (result && result.message) || 'Hindi na-save ang consultation sa Google Sheets.';
         errEl.style.display = 'block';
       }
-      btn.disabled = false;
-      btn.textContent = 'SEND MY CONSULTATION REQUEST';
     })
-    .withFailureHandler((error) => {
-      console.error('Consultation email automation failed:', error);
-      errEl.textContent = 'Hindi naipadala ang consultation emails. Pakisubukan muli.';
+    .catch(error => {
+      console.error('Consultation submission failed:', error);
+      errEl.textContent = 'Hindi naipadala ang consultation. Pakisubukan muli.';
       errEl.style.display = 'block';
+    })
+    .finally(() => {
       btn.disabled = false;
       btn.textContent = 'SEND MY CONSULTATION REQUEST';
-    })
-    .submitConsultation(payload);
+    });
 }
 
 function showConsultationResult(saveResult){

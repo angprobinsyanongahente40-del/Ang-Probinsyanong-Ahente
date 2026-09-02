@@ -45,6 +45,40 @@ function doGet() {
 }
 
 /**
+ * Receives consultation submissions from the Vercel-hosted frontend.
+ * The frontend sends URL-encoded `payload` JSON so this endpoint can be
+ * called without exposing Apps Script-only google.script.run in Vercel.
+ */
+function doPost(e) {
+  try {
+    const raw = e && e.parameter && e.parameter.payload
+      ? e.parameter.payload
+      : (e && e.postData && e.postData.contents ? e.postData.contents : '{}');
+    let data = {};
+    try {
+      data = JSON.parse(raw);
+    } catch (parseError) {
+      data = e && e.parameter ? e.parameter : {};
+    }
+    const result = submitConsultation(data);
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('doPost consultation error: ' + errorMessage_(error));
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        sheetSaved: false,
+        ownerNotification: false,
+        clientConfirmation: false,
+        message: 'Hindi naproseso ang consultation. ' + errorMessage_(error)
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
  * Called by Index.html after the visitor submits the consultation form.
  * It sends the owner notification and the client confirmation only after
  * validation succeeds. The browser shows thank-you only for success:true.
