@@ -530,15 +530,10 @@ function formatConsultationSheet_(sheet, headers) {
   sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), lastColumn)
     .setVerticalAlignment('top')
     .setWrap(true);
-  [2, 8, 9].forEach(function(col) {
-    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
-  });
-  for (let stage = 1; stage <= 7; stage++) {
-    const dateCol = headers.indexOf('Day ' + stage + ' Date') + 1;
-    const sentCol = headers.indexOf('Day ' + stage + ' Sent At') + 1;
-    if (dateCol > 0) sheet.getRange(2, dateCol, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat('mmm d, yyyy');
-    if (sentCol > 0) sheet.getRange(2, sentCol, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
-  }
+  // Do not call setNumberFormat here. The CRM may contain Google Sheets
+  // typed columns, and changing their number format causes the write to fail.
+  // Date values are written as native Date objects and retain the Sheet's
+  // existing column formatting.
   sheet.autoResizeColumns(1, lastColumn);
   sheet.setColumnWidth(5, 260);
   sheet.setColumnWidth(6, 320);
