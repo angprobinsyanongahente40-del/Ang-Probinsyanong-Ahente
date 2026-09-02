@@ -37,11 +37,15 @@ const CONFIG = {
   FOLLOWUP_DAYS: [0, 5, 10, 15, 20, 25, 29]
 };
 
-/** Serves the landing page from the same Apps Script project. */
+/** Health response for the Vercel-to-Apps-Script backend endpoint. */
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Ang Probinsyanong Ahente | Cavite Real Estate')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      ok: true,
+      service: 'Ang Probinsyanong Ahente consultation backend',
+      endpoint: 'doPost'
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
