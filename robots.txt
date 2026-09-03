@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://ang-probinsyanong-ahente.vercel.app/sitemap.xml

@@ -3002,14 +3002,14 @@ function renderSurveyRecap(){
 }
 
 /* =========================================================
-   VERCEL FRONTEND → GOOGLE APPS SCRIPT WEB APP
+   VERCEL INDEX → GOOGLE APPS SCRIPT WEB APP
 
-   The browser submits to the same-origin Vercel function. The serverless
-   proxy forwards the request to Apps Script, keeping the Apps Script URL
-   out of the public page and allowing this static landing page to run on
-   Vercel or another static host.
+   This repository intentionally contains only this index page. The form
+   posts directly to Apps Script using a simple form-encoded request, which
+   avoids CORS preflight and does not try to parse Apps Script's redirect
+   response as JSON. Apps Script remains responsible for Sheets and email.
 ========================================================= */
-const CONSULTATION_API_URL = '/api/submit-consultation';
+const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby7hHY1wmvEvlDszbcvLFxV9OL8rL9c9egnBknM24IFSumqXuoNvamiGAIX9INXlobT/exec';
 
 async function handleConsultationSubmit(event){
   event.preventDefault();
@@ -3041,21 +3041,19 @@ async function handleConsultationSubmit(event){
   btn.disabled = true;
   btn.textContent = 'SENDING...';
   try {
-    const response = await fetch(CONSULTATION_API_URL, {
+    await fetch(GAS_WEBAPP_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: new URLSearchParams({ payload: JSON.stringify(payload) }),
+      keepalive: true
     });
-    const result = await response.json();
-    if(!response.ok || !result || !(result.success === true || result.sheetSaved === true)){
-      throw new Error((result && result.message) || 'Hindi na-save ang consultation sa Google Sheets.');
-    }
     document.getElementById('consultFormView').style.display = 'none';
-    showConsultationResult(result);
+    showConsultationResult({ success: true });
     document.getElementById('consultResult').style.display = 'block';
   } catch(error) {
     console.error('Consultation submission failed:', error);
-    errEl.textContent = error.message || 'Hindi naipadala ang consultation. Pakisubukan muli.';
+    errEl.textContent = 'Hindi naipadala ang consultation. Pakisubukan muli.';
     errEl.style.display = 'block';
   } finally {
     btn.disabled = false;
