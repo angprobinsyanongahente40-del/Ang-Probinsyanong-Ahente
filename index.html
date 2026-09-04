@@ -1,18 +1,299 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ang Probinsyanong Ahente</title>
-  <meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycby7hHY1wmvEvlDszbcvLFxV9OL8rL9c9egnBknM24IFSumqXuoNvamiGAIX9INXlobT/exec">
-  <script>
-    window.location.replace(
-      'https://script.google.com/macros/s/AKfycby7hHY1wmvEvlDszbcvLFxV9OL8rL9c9egnBknM24IFSumqXuoNvamiGAIX9INXlobT/exec' +
-      window.location.search +
-      window.location.hash
-    );
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Ang Probinsyanong Ahente</title>
+
+    <!-- Favicon for browser tab -->
+    <link rel="icon" type="image/png" href="https://i.imgur.com/TcCQCER.png">
+    <link rel="shortcut icon" type="image/png" href="https://i.imgur.com/TcCQCER.png">
+    
+    <!-- For Apple devices -->
+    <link rel="apple-touch-icon" href="https://i.imgur.com/TcCQCER.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #f4f5fb;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* Minimal loading spinner */
+        .loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #f4f5fb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #dde0f0;
+            border-top-color: #222689;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #gas-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        
+        /* Error message */
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            max-width: 90%;
+            width: 320px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            border: 1px solid #f5c2c2;
+            display: none;
+            z-index: 10001;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+
+        /* Close (x) button */
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #7b7fa8;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 50%;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+
+        .close-button:hover {
+            color: #333;
+            background: #f0f1f7;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        
+        .error-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #c0392b;
+            margin-bottom: 8px;
+        }
+        
+        .error-text {
+            font-size: 0.75rem;
+            color: #7b7fa8;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        .error-button {
+            background: #222689;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        
+        .error-button:hover {
+            background: #1a1d6e;
+        }
+    </style>
 </head>
-<body>
+<body>    
+    <!-- Minimal loading spinner -->
+    <div class="loading-container" id="loadingContainer">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="error-message" id="errorMessage">
+        <button class="close-button" id="closeErrorModal" aria-label="Close error modal">&times;</button>
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">Connection Error</div>
+        <div class="error-text" id="errorText">
+            Unable to load the application. Please check your internet connection and try again.
+        </div>
+        <button class="error-button" onclick="location.reload()">Retry</button>
+    </div>
+    
+    <iframe id="gas-iframe" src="about:blank" allow="geolocation; clipboard-read; clipboard-write"></iframe>
+
+    <script>
+        // ⚠️ IMPORTANT: Replace this with your actual Google Apps Script Web App URL
+        const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby7hHY1wmvEvlDszbcvLFxV9OL8rL9c9egnBknM24IFSumqXuoNvamiGAIX9INXlobT/exec';
+        
+        const iframe = document.getElementById('gas-iframe');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const closeErrorModal = document.getElementById('closeErrorModal');
+        
+        let hasLoaded = false;
+        let loadTimeout;
+        
+        // Function to hide error modal
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        // Event listener for close button
+        closeErrorModal.addEventListener('click', hideError);
+
+        // Optional: Allow pressing ESC to close modal
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && errorMessage.classList.contains('show')) {
+                hideError();
+            }
+        });
+
+        // Function to show error
+        function showError(message) {
+            if (hasLoaded) return;
+            
+            clearTimeout(loadTimeout);
+            loadingContainer.classList.add('hidden');
+            errorText.textContent = message || 'Unable to load the application. Please check your internet connection and try again.';
+            errorMessage.classList.add('show');
+        }
+        
+        // Function to handle successful load
+        function onIframeLoad() {
+            if (hasLoaded) return;
+            
+            clearTimeout(loadTimeout);
+            hasLoaded = true;
+            
+            // Hide loading spinner
+            loadingContainer.classList.add('hidden');
+            setTimeout(() => {
+                loadingContainer.style.display = 'none';
+            }, 300);
+        }
+        
+        // Function to handle iframe errors
+        function onIframeError() {
+            if (hasLoaded) return;
+            showError('Failed to load the application. The Google Apps Script web app might be unavailable or the URL is incorrect.');
+        }
+        
+        // Build the full URL with preserved query parameters and hash
+        function buildIframeUrl() {
+            let url = GAS_WEBAPP_URL;
+            
+            // Preserve URL parameters from the wrapper URL
+            const params = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+            
+            if (hash) {
+                url += (params.toString() ? '&' : '?') + 'hash=' + encodeURIComponent(hash.substring(1));
+            }
+            
+            return url;
+        }
+        
+        // Set iframe source
+        const iframeUrl = buildIframeUrl();
+        iframe.src = iframeUrl;
+        
+        // Set timeout for loading (15 seconds max)
+        loadTimeout = setTimeout(() => {
+            if (!hasLoaded) {
+                showError('Loading timeout. The application is taking too long to respond. Please try again.');
+            }
+        }, 15000);
+        
+        // Attach iframe event listeners
+        iframe.addEventListener('load', onIframeLoad);
+        iframe.addEventListener('error', onIframeError);
+        
+        // Optional: Handle postMessage communication from the embedded app
+        window.addEventListener('message', function(event) {
+            // Verify origin for security (optional but recommended)
+            if (event.origin !== 'https://script.google.com') return;
+            
+            // Handle different message types from your Apps Script app
+            if (event.data && event.data.type) {
+                switch(event.data.type) {
+                    case 'navigate':
+                        // Update URL without reloading
+                        if (event.data.url && event.data.url !== window.location.pathname) {
+                            history.pushState(null, '', event.data.url);
+                        }
+                        break;
+                    case 'setTitle':
+                        if (event.data.title) {
+                            document.title = event.data.title;
+                        }
+                        break;
+                    case 'ready':
+                        console.log('Apps Script app is ready');
+                        break;
+                }
+            }
+        });
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function() {
+            // Send message to iframe about URL change
+            iframe.contentWindow.postMessage({
+                type: 'popstate',
+                url: window.location.href
+            }, '*');
+        });
+        
+        // Log successful setup (for debugging)
+        console.log('GitHub Pages wrapper loaded. Iframe URL:', iframeUrl);
+    </script>
 </body>
 </html>
